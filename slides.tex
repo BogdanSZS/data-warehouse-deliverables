@@ -1,0 +1,362 @@
+\documentclass[aspectratio=169, 11pt]{beamer}
+
+% Pachete
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\DeclareUnicodeCharacter{2009}{\,}  % tratează U+2009 ca o virgulă fină \,
+\usepackage[romanian]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{color}
+\usepackage{ragged2e}
+\usepackage{etoolbox}
+\usepackage[numbers]{natbib}
+\usepackage{listings}
+\usepackage[absolute, overlay]{textpos}
+\usepackage{amssymb}
+
+% Definirea culorilor personalizate
+\definecolor{darktext}{HTML}{151c0d}
+\definecolor{lighttext}{HTML}{fefae0}
+\definecolor{redtext}{HTML}{da1a32}
+\definecolor{lightbackground}{HTML}{f5f5f5}
+\definecolor{darkbackground}{HTML}{a86a24}
+\definecolor{footerbackground}{HTML}{588b8b}
+\definecolor{titlebackground}{HTML}{a86a24}
+\definecolor{enumeratecolor}{HTML}{588b8b}
+
+% Tema personalizată
+\setbeamercolor{background canvas}{bg=lightbackground}
+\setbeamercolor{normal text}{fg=darktext, bg=lightbackground}
+\setbeamercolor{title}{fg=lighttext, bg=titlebackground}
+\setbeamercolor{frametitle}{fg=lighttext, bg=darkbackground}
+\setbeamercolor{footline}{bg=footerbackground, fg=lighttext}
+
+% Culori pentru liste (itemize / enumerate)
+\setbeamercolor{item}{fg=enumeratecolor}
+\setbeamercolor{subitem}{fg=enumeratecolor}
+\setbeamercolor{subsubitem}{fg=enumeratecolor}
+\setbeamercolor{enumerate item}{fg=enumeratecolor}
+\setbeamercolor{enumerate subitem}{fg=enumeratecolor}
+\setbeamercolor{enumerate subsubitem}{fg=enumeratecolor}
+
+% Stil pentru pseudocod în lstlisting
+\lstdefinestyle{pseudo}{
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\bfseries,
+  numbers=left, numberstyle=\tiny, numbersep=6pt,
+  frame=single, rulecolor=\color{enumeratecolor},
+  columns=fullflexible, keepspaces=true,
+  showstringspaces=false, tabsize=2, xleftmargin=1.2em
+}
+
+% Customizare footer
+\setbeamertemplate{footline}{
+  \leavevmode%
+  \hbox{%
+  \begin{beamercolorbox}[wd=\paperwidth,ht=2.5ex,dp=1ex,leftskip=1em,rightskip=1em]{footline}%
+    \usebeamerfont{footline}\insertshorttitle\hfill \insertshortdate
+  \end{beamercolorbox}}%
+}
+
+% Eliminarea autorului și emailului din footer
+\setbeamertemplate{navigation symbols}{}
+
+% Customizare titlu
+\setbeamertemplate{title page}{
+  \vbox{}
+  \vfill
+  \begin{centering}
+    \begin{beamercolorbox}[sep=8pt,center,rounded=true,shadow=true]{title}
+      \usebeamerfont{title}\inserttitle\par
+    \end{beamercolorbox}
+    \vspace{0.5cm}
+    \begin{flushleft}
+      \usebeamerfont{author}\textbf{Autor:} Bogdan Szasz\\
+      \textbf{Email:} Szasz.Te.Bogdan@student.utcluj.ro\\
+      \textbf{Coordonator:} Șl. Dr. Ing. Călin Cenan\\
+      \vspace{0.8em} \insertdate
+    \end{flushleft}
+  \end{centering}
+  \vfill
+}
+
+% Tema prezentării
+\usecolortheme{default}
+
+% Setare globală pentru justificare
+\AtBeginDocument{\let\raggedright\justifying}
+% Also ensure lists & blocks are justified
+\BeforeBeginEnvironment{itemize}{\justifying}
+\BeforeBeginEnvironment{enumerate}{\justifying}
+\BeforeBeginEnvironment{description}{\justifying}
+\AtBeginEnvironment{frame}{\justifying}
+\addtobeamertemplate{block begin}{}{\justifying}
+\addtobeamertemplate{block alerted begin}{}{\justifying}
+\addtobeamertemplate{block example begin}{}{\justifying}
+
+% Titlu și autor
+\title{Analiză comparativă a algoritmilor genetici - Stadiul actual al tehnologiei}
+\date{\today}
+
+\begin{document}
+
+% Slide-ul de titlu
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% Agenda / Obiective
+\begin{frame}{Obiective}
+  \begin{itemize}
+    \item \textbf{Context:} ce sunt algoritmii genetici (GA) şi de ce contează azi (2025).
+    \item \textbf{Stadiul artei:} tipuri de GA şi direcţii recente.
+    \item \textbf{Studii sursă:} articole cheie.
+    \item \textbf{Studiu de caz:} Knapsack 0/1 - comparăm câteva variante GA.
+    \item Concluzii rapide + direcţii viitoare.
+  \end{itemize}
+\end{frame}
+
+% Minirefresh GA
+\begin{frame}{Algoritmi genetici - prezentare generală}
+  \textbf{Idee de bază:} căutare euristică inspirată de evoluţia naturală \cite{kumar2010genetic}.
+  Avem o \textit{populaţie} de soluţii (cromozomi) pe care le selectăm,
+  recombinăm şi mutăm, cu obiectivul de a maximiza o funcţie de fitness.
+  \vspace{0.5em}
+  \begin{itemize}
+    \item \textbf{Reprezentare}: cromozom binar/real/permutare. În cazul nostru,
+    \textit{binar} (0/1).
+    \item \textbf{Fitness}: calitatea soluţiei; În cazul nostru: valoare totală în sac,
+    aplicând o penalizare în cazul în care se depăşeşte capacitatea \cite{kumar2010genetic}.
+    \item \textbf{Selecţie}: turneu (\textit{tournament}) - simplu, control al presiunii
+    prin parametrul $k$.
+    \item \textbf{Recombinare}: 1-point crossover - schimb de segmente între părinţi.
+    \item \textbf{Mutaţie}: bitflip (inversare de bit cu probabilitate mică $\approx 1/n$).
+    \item \textbf{Scheme}: \textit{generaţional} (înlocuieşti toată populaţia),
+    \textit{steady-state} (înlocuiri incrementale), \textit{memetic} (GA + căutare locală).
+  \end{itemize}
+  \vspace{0.4em}
+  \footnotesize Hint: diferenţele de schemă şi operatori duc la dinamici de explorare/exploatare diferite \cite{kumar2010genetic}.
+\end{frame}
+
+\begin{frame}{Stadiul artei - taxonomie scurtă}
+  \begin{itemize}
+    \item \textbf{GA clasice:}
+      \begin{itemize}
+        \item \textit{Generaţional}: populaţie nouă per generaţie + elitism menţine vârfurile\cite{kumar2010genetic}.
+        \item \textit{Steady-state}: copii puţini, înlocuiri punctuale → diversitate mai mare în timp\cite{domonkos2023steady}.
+        \item \textit{Elitist}: copiezi cei mai buni direct; reduce riscul de „uitare” a soluţiilor bune.
+      \end{itemize}
+
+    \item \textbf{GA avansate:}
+      \begin{itemize}
+        \item \textit{Memetice}: GA + căutare locală (exploatare agresivă)\cite{yang2022memetic}.
+        \item \textit{Adaptative}: $p_{cx},p_{mut}$ se ajustează dinamic după stare.
+        \item \textit{Insulare/paralele}: mai multe sub-populaţii cu migraţii (diversitate globală) \cite{khuri1994knapsack}.
+      \end{itemize}
+
+    \item \textbf{Multi-obiectiv (MOEA)}:
+      \begin{itemize}
+        \item \textit{NSGA-II/III}, \textit{SPEA2}: fronturi Pareto, crowding, menţinere diversitate\cite{li2023multi}.
+      \end{itemize}
+
+    \item \textbf{Nișare/speciație}:
+      \begin{itemize}
+        \item \textit{Fitness sharing, crowding}: împiedică dominarea de un singur „tip” de soluţie.
+      \end{itemize}
+
+    \item \textbf{Domenii curente}:
+      \begin{itemize}
+        \item AutoML/tuning hiperparametri, combinatorială mare, planificare, design neural.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+% Problema knapsack
+\begin{frame}{Studiu de caz: Knapsack 0/1 — formulare formală}
+  \textbf{Problemă:} avem $n$ itemi, fiecare cu valoare $v_i$ şi greutate $w_i$. Căutăm subsetul care maximizează valoarea totală sub o capacitate $C$.
+  \[
+    \max_{x \in \{0,1\}^n} \quad \sum_{i=1}^{n} v_i x_i
+    \quad \text{s.\,a.} \quad \sum_{i=1}^{n} w_i x_i \le C
+  \]
+  \textbf{Relevanţă:} problemă \textbf{NP-hard} (cel puțin \textit{nondeterministic polynomial time})
+  clasică; ideală pentru a compara diferite scheme GA (explorare/exploatare) \cite{kumar2010genetic}.
+  \vspace{0.5em}
+  \begin{itemize}
+    \item \textbf{Abordare:} maximizăm valoarea totală, sub constrângerea de greutate.
+    \item \textbf{Instanţă:} $n=120$ itemi, capacitate $= 0.5 \cdot \sum w_i$.
+    \item \textbf{Reprezentare:} vector binar; fitness cu penalizare + reparare greedy (fezabilizare).
+  \end{itemize}
+\end{frame}
+
+% Varianta algoritmilor testaţi
+\begin{frame}{Variante GA testate}
+  \begin{enumerate}
+    \item GA generaţional (elitism 1).
+    \item GA steady-state (înlocuire incrementală).
+    \item GA memetic (local search pe elite).
+  \end{enumerate}
+  \footnotesize Parametri: $|P|{=}120$, $p_{cx}{=}0.9$, $p_{mut}{=}1/n$, tournament $k{=}3$, max.\ 50k evaluări/run.
+\end{frame}
+
+\begin{frame}[fragile]{GA generaţional (cu elitism)}
+  \vspace{-0.5em}
+  \begin{lstlisting}[style=pseudo]
+# Populatie initiala P               
+while evals < max_evals:             
+    E = elite(P, elitism)            # selectam cei mai buni indivizi (elitism)
+    Pnew = E                         # noua populatie cu elitele
+    while |Pnew| < |P|:              # umplem pana la dim initiala
+        p1, p2 = select_tournament(P, k)        # alegem parinti prin tournament
+        c1, c2 = crossover_1p(p1, p2) with prob p_cx 
+        mutate_bitflip(c1, p_mut); mutate_bitflip(c2, p_mut) 
+        repair_feasible(c1); repair_feasible(c2)
+        add c1, c2 to Pnew           # adaugam copiii in noua populatie
+    P = Pnew                         # inlocuim vechea populatie cu cea noua
+  \end{lstlisting}
+  \footnotesize Pro: simplu, stabil cu elitism. Contra: risc de convergenţă prematură fără diversitate \cite{kumar2010genetic}.
+\end{frame}
+
+\begin{frame}[fragile]{GA steady-state (înlocuire incrementală)}
+  \vspace{-0.5em}
+  \begin{lstlisting}[style=pseudo]
+# Populatie initiala P               
+while evals < max_evals:             
+    p1, p2 = select_tournament(P, k)          # alegem parinti prin turneu
+    c1, c2 = crossover_1p(p1, p2) with prob p_cx
+    mutate_bitflip(c1, p_mut); mutate_bitflip(c2, p_mut) 
+    repair_feasible(c1); repair_feasible(c2)  
+    f1, f2 = fitness(c1), fitness(c2)         # evaluam copiii
+    replace_worst_if_better(P, c1, f1)        # inlocuim cel mai slab individ daca
+                                                copilul e mai bun
+    replace_worst_if_better(P, c2, f2)        # idem pentru al doilea copil
+  \end{lstlisting}
+  \footnotesize Pro: mai multă diversitate în timp. Contra: progres mai lent per unitate de timp \cite{domonkos2023steady}.
+\end{frame}
+
+\begin{frame}[fragile]{GA memetic (GA + căutare locală 1-bit)}
+  \vspace{-0.5em}
+  \begin{lstlisting}[style=pseudo]
+# Populatie initiala P                    
+while evals < max_evals:                  
+    E = elite(P, elitism)                 # elitele din gen. curenta
+    Pnew = E + offspring_via_GA(P)        # completam restul pop. ca in GA std.
+    evaluate(Pnew)                        
+    Top = select_best(Pnew, m)            # cei mai buni m indivizi
+    for x in Top:                         # pentru fiecare individ de top
+        x_improved = local_search_1bit(x) # aplicam cautare locala (flip 1 bit) 
+        replace_if_better(Pnew, x, x_improved)
+    P = Pnew                              
+  \end{lstlisting}
+  \footnotesize Pro: exploatare puternică, convergenţă rapidă. Contra: cost uşor mai mare per generaţie \cite{yang2022memetic}.
+\end{frame}
+
+
+% Setup experimental
+\begin{frame}{Setup experimental}
+  \begin{itemize}
+    \item Implementare Python3 (NumPy, Matplotlib, Pandas).
+    \item $n{=}120$ itemi, instanță fixă generată cu seed determinist.
+    \item 3 rulări / variantă (seeds 101, 202, 303).
+    \item \textbf{Fitness:} valoare totală cu penalizare + reparare greedy.
+    \item \textbf{Criteriu oprire:} $50\,000$ evaluări de fitness.
+    \item \textbf{Output:} convergenţă + scor mediu ± deviaţie standard.
+  \end{itemize}
+\end{frame}
+
+% Rezultate
+\begin{frame}{Rezultate agregate (CSV)}
+  \centering
+  \begin{tabular}{lccc}
+    \hline
+    \textbf{Variantă} & \textbf{Best Mean} & \textbf{Std} & \textbf{Dur. medie (s)} \\
+    \hline
+    GA generaţional & 5039.34 & 2.00 & 0.47 \\
+    GA steady-state & 5041.59 & 1.80 & 0.68 \\
+    Memetic GA (LS top-4) & 5042.36 & 0.00 & 0.86 \\
+    \hline
+  \end{tabular}
+
+  \vspace{0.6em}
+  \justifying
+  \footnotesize
+  \textbf{Interpretare:}
+  \begin{itemize}
+    \item \textit{Nivel absolut:} toate variantele ating $\approx 5040$, deci similar ca
+    soluţie finală pe această instanţă.
+    \item \textit{Stabilitate:} deviaţia standard cea mai mică la \textbf{GA-ul memetic}
+    (0.00 pe 3 rulări) $\leadsto$ comportament foarte consistent.
+    \item \textit{Viteză:} \textbf{GA-ul generaţional} este cel mai rapid pe rularile
+    noastre; \textbf{GA-ul memetic} e uşor mai lent datorită căutării locale.
+    \item \textit{Concluzie:} dacă ai buget fix de evaluări, \textbf{GA-ul memetic} tinde
+    să ajungă mai repede pe platou şi să fie mai stabil; \textbf{GA-ul steady-state} e
+    între cele două.
+  \end{itemize}
+  \vspace{0.2em}
+  \footnotesize Valorile provin din \texttt{data/ga\_knapsack\_results.csv}. Diferenţele mici (0.1\%) sunt evidenţiate pe grafic prin \textit{zoom} pe axa Y.
+\end{frame}
+
+% Rezultate — convergență medie
+\begin{frame}{Rezultate: convergenţă medie}
+  \begin{columns}
+    \begin{column}{0.54\linewidth}
+      \includegraphics[width=\linewidth]{figs/ga_knapsack_convergence.png}
+    \end{column}
+    \begin{column}{0.45\linewidth}
+      \footnotesize
+      \begin{itemize}
+        \item Medie pe 3 rulări/variantă.
+        \item Memetic GA converge ușor mai rapid.
+        \item Toate ating scoruri similare după 10000 evaluări ($\approx 5040$).
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Rezultate — comparație finală
+\begin{frame}{Rezultate: comparaţie finală}
+  \begin{columns}
+    \begin{column}{0.58\linewidth}
+      \includegraphics[width=\linewidth]{figs/ga_knapsack_bars.png}
+    \end{column}
+    \begin{column}{0.38\linewidth}
+      \footnotesize
+      \begin{itemize}
+        \item \textbf{GA generaţional:} $5039.34 \pm 2.0$
+        \item \textbf{Steady-state:} $5041.59 \pm 1.8$
+        \item \textbf{Memetic GA:} $5042.36 \pm 0.0$
+        \item Timpuri relative: memetic $\approx 0.85$ s, steady $\approx 0.68$ s.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Concluzii
+\begin{frame}{Concluzii \& lecţii}
+  \begin{itemize}
+    \item Toate variantele ating soluţii aproape identice $\approx 5040$ (optimum local comun).
+    \item GA memetic converge mai rapid și mai stabil (deviație 0.0).
+    \item Steady-state menține diversitatea mai mult, dar e mai lent.
+    \item Timpurile de execuţie cresc uşor cu complexitatea (0.47 s → 0.86 s).
+    \item Direcţii viitoare: codificare reală, GA insulare, adaptivitate hibridă.
+  \end{itemize}
+\end{frame}
+
+% Slide: Mulțumiri
+\begin{frame}
+    \centering
+    \vfill
+    {\LARGE \textbf{Vă mulțumesc pentru atenție!}}
+    \vfill
+\end{frame}
+
+% Slide: Bibliografie
+\begin{frame}[allowframebreaks]{Bibliografie}
+    \scriptsize                       % Setează textul bibliografiei la cel mai mic font posibil
+    \nocite{*}                  % Include toate referințele din references.bib
+    \bibliographystyle{abbrvnat} % Stilul bibliografiei
+    \bibliography{references}   % Numele fișierului .bib (fără extensie)
+\end{frame}
+
+\end{document}
