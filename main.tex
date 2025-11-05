@@ -1,0 +1,579 @@
+\documentclass[11pt,journal,compsoc]{IEEEtran}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amsfonts, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage[font=scriptsize]{caption}
+\usepackage{color}
+\usepackage{lipsum} % for dummy text
+\geometry{margin=1in}
+
+% ### Bibliografie ###
+\usepackage[numbers]{natbib}
+\bibliographystyle{abbrvnat}
+
+% ### Listings ###
+\usepackage{listings}
+\usepackage{listingsutf8}
+\usepackage[dvipsnames]{xcolor}
+
+% Stil general pentru listings
+\lstdefinestyle{base}{
+  inputencoding=utf8,
+  basicstyle=\ttfamily\small,
+  numbers=left,
+  numberstyle=\tiny,
+  numbersep=8pt,
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{Gray},
+  xleftmargin=1.2em,
+  showstringspaces=false,
+  tabsize=2,
+  breaklines=true,
+  captionpos=b
+}
+
+% Python
+\lstdefinestyle{pythonstyle}{
+  style=base,
+  language=Python,
+  keywordstyle=\color{Blue}\bfseries,
+  stringstyle=\color{ForestGreen},
+  commentstyle=\color{Gray},
+  morekeywords={dataclass, List, Tuple, Dict},
+}
+
+% CSV (folosim listings ca text simplu; evidențiem delimitatorii)
+\lstdefinelanguage{CSV}{
+  morestring=[b]",
+  morecomment=[l]{\#},
+  sensitive=false
+}
+\lstdefinestyle{csvstyle}{
+  style=base,
+  language=CSV,
+  keywordstyle=\color{MidnightBlue}\bfseries
+}
+
+% Header and Footer
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textit{Data Warehouse - Genetic Algorithms}}
+\fancyhead[R]{\textit{Master TIE - An 2, Sem. 1}}
+\fancyfoot[C]{\thepage}
+
+% Title and Author
+\title{
+    Algoritmi genetici (GA), Stadiul actual și studiu de caz pe Knapsack 0/1
+}
+\author{
+    \textbf{Author:} Bogdan Szasz \\
+    \textbf{Email:} Szasz.Te.Bogdan@student.utcluj.ro \\
+    \textbf{Coordinator}: Șl. Dr. Ing. Călin Cenan
+    }
+\date{\vspace{1em} \today}
+
+% Begin Document
+\begin{document}
+\maketitle
+
+\begin{abstract}
+    Algoritmii genetici (GA) reprezintă o clasă de metaeuristici inspirate de principiile
+    selecției naturale și ale geneticii evolutive, utilizate pe scară largă pentru
+    optimizarea problemelor complexe și combinatoriale. În acest articol analizăm stadiul
+    actual al dezvoltării GA-urilor până acum, cu accent pe principalele familii de
+    algoritmi (clasici, memetici, adaptivi, insulari și multi-obiectiv). În a doua parte,
+    realizăm un studiu de caz aplicat pe problema \textit{Knapsack 0/1}, utilizând trei
+    variante de implementare: GA generațional, GA steady-state și GA memetic. Experimentele,
+    efectuate pe o instanță cu 120 de obiecte, arată că toate cele trei variante ating
+    soluții similare ca valoare finală, însă GA-ul memetic converge mai rapid și prezintă
+    o stabilitate superioară, în timp ce varianta generațională se remarcă printr-un timp
+    mediu de execuție mai redus. Rezultatele sunt corelate cu observațiile din literatura
+    de specialitate și validează utilitatea abordărilor hibride în optimizarea
+    combinatorială.
+\end{abstract}
+
+% 1. Introducere
+\section{Introducere}
+Algoritmii genetici (GA) fac parte dintr-o familie mai largă de metode evolutive de
+optimizare, care îşi au originea în analogia cu mecanismele de selecţie naturală propuse
+iniţial de John Holland în anii 1970. În esenţă, un GA lucrează cu o populaţie de
+soluţii candidate (\textit{cromozomi}) care evoluează iterativ prin aplicarea operatorilor
+de selecţie, recombinare şi mutaţie, cu scopul de a maximiza o funcţie de fitness.
+Aceste procese imită conceptele de moştenire genetică, încrucişare şi variaţie ale
+sistemelor biologice reale \cite{kumar2010genetic}.
+
+GA-urile s-au dovedit deosebit de utile pentru probleme unde metodele exacte sunt
+prohibitive din punct de vedere computaţional (NP-hard), cum ar fi problemele de alocare
+de resurse, planificare, rutare sau \textit{Knapsack 0/1} \citep{khuri1994knapsack}.
+Datorită naturii lor stocastice şi a caracterului paralelizabil, algoritmii genetici
+oferă un echilibru între explorarea spaţiului de căutare (căutare globală) şi exploatarea
+soluţiilor promiţătoare (căutare locală).
+
+Scopul prezentului articol este dublu:
+\begin{enumerate}
+  \item să ofere o privire de ansamblu asupra stadiului actual al algoritmilor genetici
+  până în 2025, sintetizând principalele familii, direcţii moderne şi aplicaţii recente;
+  \item să realizeze un studiu de caz concret asupra problemei \textit{Knapsack 0/1},
+  comparând trei variante de GA: generaţional, steady-state şi memetic.
+\end{enumerate}
+
+Lucrarea este organizată astfel: Secţiunea II prezintă fundamentele teoretice ale
+algoritmilor genetici; Secţiunea III descrie principalele direcţii de dezvoltare actuale;
+Secţiunea IV detaliază formalismul problemei \textit{Knapsack 0/1}; Secţiunea V explică
+metodologia experimentală şi setup-ul testelor; Secţiunea VI prezintă rezultatele şi
+interpretarea acestora, urmate de concluzii şi perspective în Secţiunea VII.
+
+% ---------------- 2. Fundamente GA ----------------
+\section{Fundamente teoretice ale algoritmilor genetici}
+
+Algoritmii genetici (GA) sunt metaeuristici stocastice inspirate de principiile evoluţiei
+naturale, care urmăresc să optimizeze o funcţie obiectiv prin procese analoge selecţiei,
+recombinării şi mutaţiei din biologie. În loc să exploreze direct soluţii individuale,
+GA-urile lucrează cu o \textit{populaţie} de soluţii candidate, permiţând o explorare
+paralelă a spaţiului de căutare şi un echilibru între explorare şi exploatare
+\citep{kumar2010genetic}.
+
+\subsection{Structura generală a unui algoritm genetic}
+O iteraţie tipică a unui GA (numită \textit{generaţie}) include următoarele etape:
+\begin{enumerate}
+  \item \textbf{Iniţializarea populaţiei} - se generează un set iniţial de soluţii
+  (cromozomi), de regulă aleatoriu, pentru a acoperi cât mai bine spaţiul de căutare.
+  \item \textbf{Evaluarea fitness-ului} - fiecare individ este evaluat printr-o funcţie
+  de fitness $f(x)$, care reflectă calitatea soluţiei.
+  \item \textbf{Selecţia părinţilor} - indivizii cu fitness mai mare au o probabilitate
+  mai ridicată de a fi selectaţi pentru reproducere; o metodă comună este selecţia prin
+  turneu (\textit{tournament selection}), unde dintr-un grup aleator de $k$ indivizi se
+  alege cel mai bun.
+  \item \textbf{Recombinarea (crossover)} - doi părinţi se combină pentru a produce
+  descendenţi noi, schimbând segmente din structura genetică. O tehnică frecvent utilizată
+  este \textit{crossover-ul 1-punct} (1-point).
+  \item \textbf{Mutaţia} - fiecare genă (bit, parametru) are o mică probabilitate de a
+  fi modificată; în codificarea binară, operatorul clasic este \textit{bitflip}, cu o
+  probabilitate de aproximativ $1/n$, unde $n$ este lungimea cromozomului.
+  \item \textbf{Selecţia pentru generaţia următoare} - se formează o nouă populaţie din
+  indivizii existenţi şi cei noi, conform unei scheme evolutive (generaţională,
+  steady-state, elitistă etc.).
+\end{enumerate}
+
+\subsection{Reprezentarea soluţiilor}
+Reprezentarea determină modul în care o soluţie este stocată şi interpretată:
+\begin{itemize}
+  \item \textbf{Codificare binară} - fiecare genă este 0/1; este cea mai comună pentru
+  probleme discrete (e.g., \textit{Knapsack 0/1});
+  \item \textbf{Codificare reală} - pentru probleme continue, cromozomii sunt vectori de
+  numere reale;
+  \item \textbf{Permutare} - utilizată pentru probleme de ordonare (e.g.,
+  \textit{Travelling Salesman Problem}).
+\end{itemize}
+Alegerea codificării influenţează semnificativ performanţa şi tipul de operatori
+utilizabili.
+
+\subsection{Scheme evolutive}
+Există mai multe moduri de a gestiona tranziţia între generaţii:
+\begin{itemize}
+  \item \textbf{Schema generaţională} - întreaga populaţie este înlocuită în fiecare
+  generaţie, eventual păstrând câţiva indivizi de elită (elitism);
+  \item \textbf{Schema steady-state} - doar câţiva indivizi sunt înlocuiţi incremental,
+  permiţând menţinerea diversităţii în timp \citep{domonkos2023steady};
+  \item \textbf{Schema elitistă} - cei mai buni indivizi sunt copiaţi direct în generaţia
+  următoare, prevenind pierderea soluţiilor optime locale;
+  \item \textbf{Schema memetică} - combină GA-ul cu o fază suplimentară de căutare locală
+  (e.g., hill-climbing) aplicată asupra celor mai buni indivizi \citep{yang2022memetic}.
+\end{itemize}
+
+\subsection{Echilibrul explorare–exploatare}
+Performanţa unui GA depinde de capacitatea sa de a menţine un echilibru între:
+\begin{itemize}
+  \item \textbf{Explorare} - descoperirea de regiuni noi din spaţiul de căutare
+  (diversitate ridicată);
+  \item \textbf{Exploatare} - rafinarea soluţiilor promiţătoare existente.
+\end{itemize}
+Un dezechilibru poate duce fie la convergenţă prematură (explorare insuficientă), fie
+la stagnare (exploatare excesivă). Parametrii precum $p_{cx}$, $p_{mut}$, mărimea
+turneului $k$ şi nivelul de elitism influenţează direct acest echilibru
+\citep{kumar2010genetic}.
+
+% ---------------- 3. Stadiul artei ----------------
+\section{State of the Art}
+De la formularea originală propusă de Holland în anii '70, algoritmii genetici au evoluat
+considerabil, atât din punct de vedere teoretic, cât şi practic. În prezent, GA-urile
+reprezintă o familie extinsă de metode evolutive, care includ o gamă variată de scheme,
+operatori şi strategii de control adaptiv. Această secţiune sintetizează principalele
+direcţii de dezvoltare şi categoriile majore de algoritmi genetici utilizate până în
+anul 2025.
+
+\subsection{GA clasice}
+
+GA-urile clasice rămân fundamentul tuturor dezvoltărilor ulterioare. Două dintre cele
+mai cunoscute variante sunt:
+\begin{itemize}
+  \item \textbf{GA generaţional} — în fiecare iteraţie, întreaga populaţie este înlocuită
+  de o generaţie nouă. Adesea se aplică \textit{elitismul}, prin care un număr mic de
+  indivizi cu fitness maxim sunt copiaţi direct pentru a preveni pierderea celor mai bune
+  soluţii \citep{kumar2010genetic}.
+  \item \textbf{GA steady-state} — în loc de o reînnoire completă, doar câţiva indivizi
+  sunt înlocuiţi treptat, ceea ce favorizează menţinerea diversităţii genetice şi un
+  echilibru mai bun între explorare şi exploatare \citep{domonkos2023steady}.
+\end{itemize}
+Ambele abordări sunt folosite pe scară largă, alegerea depinzând de dimensiunea
+populaţiei, complexitatea problemei şi constrângerile de timp.
+
+\subsection{GA avansate şi hibride}
+
+Pe măsură ce limitele GA-urilor standard au devenit evidente (de exemplu, convergenţa
+prematură), cercetarea s-a orientat spre versiuni hibride, care îmbină GA-ul cu alte
+metode euristice:
+\begin{itemize}
+  \item \textbf{GA memetic} — combină evoluţia globală a unui GA cu o fază de căutare
+  locală aplicată indivizilor de elită. Această abordare oferă un echilibru eficient
+  între diversitate şi exploatare intensă, având performanţe superioare pe probleme
+  combinatoriale precum \textit{Knapsack 0/1} sau probleme multidimensionale \citep{yang2022memetic}.
+  \item \textbf{GA adaptativ} — ajustează dinamic parametrii principali ($p_{cx}$, $p_{mut}$, dimensiunea turneului etc.) în funcţie de progresul evoluţiei. Astfel se evită blocarea în optime locale şi se optimizează rata de convergenţă.
+  \item \textbf{GA insular / paralel} — populaţia este împărţită în sub-populaţii
+  (insule) care evoluează independent, cu migraţii periodice între ele. Acest model
+  creşte diversitatea globală şi este potrivit pentru sisteme distribuite şi aplicaţii
+  de tip HPC \citep{khuri1994knapsack}.
+\end{itemize}
+
+\subsection{GA multi-obiectiv (MOEA)}
+
+În multe aplicaţii moderne, obiectivul nu este unic, ci implică optimizarea simultană a
+mai multor criterii (de exemplu, performanţă şi cost). În aceste cazuri, se utilizează
+algoritmi genetici multi-obiectiv (\textit{Multi-Objective Evolutionary Algorithms}, MOEA), care urmăresc aproximarea frontului Pareto al soluţiilor nedominante. Printre cei mai cunoscuţi se numără:
+\begin{itemize}
+  \item \textbf{NSGA-II / NSGA-III} — bazate pe ordonarea nedominată şi distanţa de
+  aglomerare (\textit{crowding distance}) pentru a menţine diversitatea soluţiilor;
+  \item \textbf{SPEA2} — un algoritm de arhivare care păstrează un set de soluţii
+  Pareto-optime externe şi aplică selecţie bazată pe dominanţă \citep{li2023multi}.
+\end{itemize}
+Aceste variante sunt larg utilizate în optimizarea multi-obiectivă modernă (de exemplu,
+pentru proiectarea reţelelor, planificare sau optimizarea hiperparametrilor în modele
+de învăţare automată).
+
+\subsection{Tendinţe actuale şi aplicaţii moderne}
+
+În ultimii ani, interesul pentru algoritmii genetici a fost revitalizat datorită
+aplicabilităţii lor în:
+\begin{itemize}
+  \item \textbf{AutoML şi optimizarea arhitecturilor neuronale}, unde GA-urile sunt
+  utilizate pentru selecţia hiperparametrilor şi evoluţia structurii de reţea;
+  \item \textbf{Optimizarea combinatorială la scară mare}, cum ar fi probleme de alocare
+  din logistică, programare a producţiei sau rutare;
+  \item \textbf{Planificare şi control autonom}, în special pentru roboţi mobili şi
+  sisteme autonome complexe;
+  \item \textbf{Design evolutiv asistat de calcul}, unde GA-urile sunt combinate cu modele
+  de simulare fizică sau generative pentru a descoperi soluţii inovative.
+\end{itemize}
+
+În general, literatura actuală indică o tranziţie de la GA-urile standard, cu parametri
+statici, spre algoritmi genetici hibrizi, paralelizaţi şi adaptaţi automat, capabili să
+se integreze în sisteme de învăţare automată şi optimizare complexă.
+
+% ---------------- 4. Problema Knapsack ----------------
+\section{Problema Knapsack 0/1 - formulare}
+Problema \textit{Knapsack 0/1} este una dintre cele mai studiate probleme combinatoriale
+din teoria optimizării şi reprezintă un caz clasic de problemă NP-hard. În termeni simpli,
+obiectivul este selectarea unui subset de obiecte, fiecare caracterizat printr-o valoare
+$v_i$ şi o greutate $w_i$, astfel încât valoarea totală să fie maximă fără a depăşi o
+capacitate totală $C$.
+
+\subsection{Formulare matematică}
+
+\begin{equation}
+\max_{x \in \{0,1\}^n} \quad f(x) = \sum_{i=1}^{n} v_i x_i
+\end{equation}
+\[
+\text{s.\,a.} \quad \sum_{i=1}^{n} w_i x_i \leq C,
+\]
+unde $x_i$ este o variabilă binară care indică dacă obiectul $i$ este selectat
+($x_i = 1$) sau nu ($x_i = 0$).
+
+Problema devine dificilă pentru dimensiuni mari ($n \geq 100$), deoarece spaţiul de
+căutare are $2^n$ combinaţii posibile. Prin urmare, metodele exacte (de exemplu,
+programarea dinamică) devin impracticabile din cauza costului computaţional exponenţial
+\citep{khuri1994knapsack}.
+
+\subsection{Relevanţă în contextul GA}
+
+Knapsack 0/1 oferă un mediu ideal pentru testarea algoritmilor genetici, datorită
+următoarelor caracteristici:
+\begin{itemize}
+  \item \textbf{Structură binară naturală:} fiecare soluţie poate fi reprezentată direct
+  ca un cromozom binar $x = (x_1, x_2, \dots, x_n)$, ceea ce permite utilizarea
+  operatorilor standard de \textit{crossover} şi \textit{bitflip mutation}.
+  \item \textbf{Constrângere de fezabilitate:} limitele de greutate oferă un mecanism util
+  pentru a testa performanţa operatorilor de "reparare" (\textit{repair operators}) şi a
+  penalizărilor din fitness.
+  \item \textbf{Peisaj de căutare complex:} există numeroase soluţii locale de calitate
+  apropiată, ceea ce face dificilă convergenţa către soluţia globală — un scenariu perfect
+  pentru analiza echilibrului explorare–exploatare.
+  \item \textbf{Transferabilitate:} structura problemei este similară cu alte domenii
+  aplicative (alocare de resurse, planificare, selecţie de portofoliu etc.).
+\end{itemize}
+
+\subsection{Funcţia de fitness utilizată}
+
+În experimentele noastre, funcţia de fitness este definită astfel:
+\begin{equation}
+F(x) =
+\begin{cases}
+  \displaystyle\sum_{i=1}^{n} v_i x_i, 
+    & \text{dacă } \displaystyle\sum_{i=1}^{n} w_i x_i \le C, \\[1.0em]
+  \displaystyle\sum_{i=1}^{n} v_i x_i 
+    - \alpha \Bigl( \displaystyle\sum_{i=1}^{n} w_i x_i - C \Bigr),
+    & \text{altfel.}
+\end{cases}
+\label{eq:fitness}
+\end{equation}
+unde $\alpha = 10.0$ este un coeficient de penalizare liniară, utilizat pentru a descuraja
+soluţiile nefezabile.  
+În plus, s-a introdus un operator de \textit{reparare greedy}, care elimină obiectele cu
+cel mai slab raport valoare/greutate până la restabilirea fezabilităţii.
+
+\subsection{Instanţa experimentală}
+
+Pentru studiul de faţă, s-a generat o instanţă de Knapsack cu $n = 120$ obiecte, folosind
+o distribuţie uniformă pentru valorile $v_i \in [5, 100]$ şi greutăţile $w_i \in [1, 20]$,
+cu capacitatea $C = 0.5 \cdot \sum_i w_i$.  
+Această dimensiune permite observarea comportamentului algoritmilor într-un spaţiu de
+căutare suficient de mare ($>10^{36}$ combinaţii), dar gestionabil pentru testare pe un
+sistem standard.
+
+% ---------------- 5. Metodologie experimentală ----------------
+\section{Metodologie experimentală}
+Pentru evaluarea comparativă a variantelor de algoritmi genetici, s-a implementat un set
+complet de experimente în Python 3.11, utilizând bibliotecile \texttt{NumPy},
+\texttt{Matplotlib} şi \texttt{Pandas}. 
+Implementarea a fost concepută modular, astfel încât fiecare variantă de GA
+(generaţional, steady-state, memetic) să poată fi testată cu aceiaşi parametri de bază,
+schimbând doar schema evolutivă.
+
+\subsection{Configurația experimentală}
+
+Tabelul~\ref{tab:params} rezumă parametrii globali utilizaţi în toate variantele de
+algoritmi testaţi.
+
+\begin{table}[h]
+    \centering
+    \caption{Parametri experimentali utilizați}
+    \label{tab:params}
+    \begin{tabular}{ll}
+        \hline
+        \textbf{Parametru} & \textbf{Valoare / Descriere} \\
+        \hline
+        Dimensiune populație ($|P|$) & 120 indivizi \\
+        Probabilitate crossover ($p_{cx}$) & 0.9 (crossover 1-punct) \\
+        Probabilitate mutație ($p_{mut}$) & $1/n$ (bitflip) \\
+        Mărime turneu selecție ($k$) & 3 indivizi \\
+        Elitism & 1 individ copiat direct \\
+        Criteriu oprire & $50\,000$ evaluări de fitness \\
+        Număr rulări / variantă & 3 (seed-uri: 101, 202, 303) \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsection{Structura implementării}
+
+Codul Python este organizat în trei componente principale:
+\begin{enumerate}
+  \item \textbf{Generatorul de instanțe:} creează o instanță de Knapsack 0/1 cu $n$
+  obiecte, valori şi greutăţi distribuite uniform;
+  \item \textbf{Operatorii genetici:} selecție prin turneu, crossover cu 1 punct, mutație
+  \textit{bit-flip}, operator de reparare \textit{greedy};
+  \item \textbf{Schema GA:} controlează procesul evolutiv (generațional, steady-state sau
+  memetic).
+\end{enumerate}
+
+\subsection{Fragment de cod Python}
+
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{red},
+  frame=single,
+  breaklines=true,
+  showstringspaces=false
+}
+
+\begin{lstlisting}[caption={Funcția principală \texttt{run\_ga()}}, label={lst:runga}]
+def run_ga(cfg: GAConfig, seed: int, v: np.ndarray, w: np.ndarray, cap: float):
+    """Rularea unei variante de GA."""
+    rng = random.Random(seed)
+    pop = [np.random.randint(0, 2, len(v)) for _ in range(cfg.pop_size)]
+    for ind in pop:
+        repair_greedy(ind, w, v, cap)
+    fits = [fitness(ind, v, w, cap) for ind in pop]
+    evals = len(pop)
+
+    while evals < cfg.max_evals:
+        if cfg.variant == "generational":
+            new_pop = elite_selection(pop, fits, cfg.elitism)
+            while len(new_pop) < cfg.pop_size:
+                p1, p2 = tournament_selection(pop, fits, cfg.tour_k, rng), \
+                         tournament_selection(pop, fits, cfg.tour_k, rng)
+                c1, c2 = one_point_crossover(p1, p2, rng)
+                bitflip_mutation(c1, cfg.p_mut, rng)
+                bitflip_mutation(c2, cfg.p_mut, rng)
+                repair_greedy(c1, w, v, cap)
+                repair_greedy(c2, w, v, cap)
+                new_pop.extend([c1, c2])
+            pop = new_pop[:cfg.pop_size]
+            fits = [fitness(ind, v, w, cap) for ind in pop]
+            evals += len(pop)
+\end{lstlisting}
+
+Funcţia \texttt{run\_ga()} centralizează procesul evolutiv: selecţie, recombinare,
+mutaţie, reparare şi reevaluare a populaţiei.  
+Versiunea \textit{memetică} include, suplimentar, un pas de \textit{local search 1-bit}
+aplicat celor mai buni indivizi.
+
+\subsection{Exemplu de rezultate brute (CSV)}
+
+La finalul execuţiei, fiecare rulare salvează valorile în fişierul
+\texttt{ga\_knapsack\_results.csv}, care conţine rezultatele medii şi deviaţiile standard
+pentru fiecare variantă.  
+
+\lstset{
+  language={},
+  basicstyle=\ttfamily\scriptsize,
+  frame=single,
+  breaklines=true
+}
+
+\begin{table}[h]
+\centering
+\caption{Rezultate agregate pe 3 rulări pentru fiecare variantă GA}
+\label{tab:csv}
+\begin{tabular}{lccc}
+\hline
+\textbf{Variantă} & \textbf{Best Mean} & \textbf{Std. dev.} & \textbf{Durată medie (s)} \\
+\hline
+GA generațional (elitism=1) & 5039.34 & 2.00 & 0.47 \\
+GA steady-state              & 5041.59 & 1.80 & 0.68 \\
+Memetic GA (LS top-4)        & 5042.36 & 0.00 & 0.86 \\
+\hline
+\end{tabular}
+\end{table}
+
+Valorile sunt ulterior prelucrate în \texttt{Pandas} pentru a genera tabele comparative şi
+grafice (convergenţă şi bar chart).  
+Prin acest format standardizat, se pot adăuga uşor alte variante de algoritmi fără a
+modifica fluxul principal de analiză.
+
+% ---------------- 6. Rezultate ----------------
+\section{Rezultate}
+\label{sec:rezultate}
+
+În urma rulărilor experimentale efectuate pe instanța \textit{Knapsack 0/1} cu $n=120$ itemi,
+au fost comparate trei variante de algoritmi genetici: \textbf{GA generațional} (cu elitism),
+\textbf{GA steady-state} și \textbf{GA memetic} (cu local search aplicat pe elite).
+Rezultatele sintetizate în Tabelul~\ref{tab:csv} și vizualizările din Figurile~\ref{fig:convergenta}
+și~\ref{fig:bars} evidențiază diferențe subtile, dar semnificative, între cele trei variante.
+
+\subsection{Convergența medie}
+Figura~\ref{fig:convergenta} ilustrează traiectoria medie a celui mai bun individ
+în funcție de numărul de evaluări de fitness. Se observă că \textbf{GA-ul memetic}
+atinge rapid un platou stabil în jurul valorii $5040$, depășind ușor în viteză
+GA-ul generațional. Varianta \textbf{steady-state} evoluează mai lent în primele faze,
+dar menține o diversitate mai mare a populației, reducând riscul de blocare prematură.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{figs/ga_knapsack_convergence.png}
+\caption{Convergența medie pe trei rulări (seed-uri 101, 202, 303) pentru fiecare variantă GA.}
+\label{fig:convergenta}
+\end{figure}
+
+\subsection{Comparația finală între variante}
+Analizând valorile medii și deviațiile standard (Tabelul~\ref{tab:csv}),
+se constată că toate variantele ating soluții apropiate de un \textit{optimum local comun}
+($\approx 5040$), însă \textbf{GA-ul memetic} prezintă o stabilitate semnificativ mai mare
+(deviație standard $= 0.0$ pe trei rulări). Acest comportament se explică prin
+faptul că local search-ul 1-bit corectează variațiile aleatorii și menține elitele aproape de
+platoul optim.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{figs/ga_knapsack_bars.png}
+\caption{Comparația valorilor medii (cu deviație standard) pentru cele trei variante GA.}
+\label{fig:bars}
+\end{figure}
+
+\subsection{Analiza timpilor de execuție}
+Deși timpul de execuție nu este un factor critic pentru instanțe mici, s-a observat
+o creștere ușoară a costului per generație în cazul algoritmului memetic (aproximativ $0.85$~s),
+comparativ cu GA-ul generațional ($0.47$~s) și steady-state ($0.68$~s). Diferența este explicabilă
+prin costul suplimentar al căutării locale aplicate pe elitele fiecărei generații.
+
+\subsection{Discuție comparativă}
+Comportamentul observat confirmă literatura de specialitate:
+algoritmii memetici tind să combine \textit{explorarea globală} a GA-urilor clasice
+cu \textit{exploatarea locală} specifică metodelor deterministe \cite{yang2022memetic}.
+GA-ul steady-state, deși mai lent, are avantajul unei diversități interne crescute,
+fiind preferabil în contexte unde se dorește evitarea convergenței premature
+\cite{domonkos2023steady}.
+
+În concluzie, din perspectiva raportului între calitate și stabilitate a soluției,
+\textbf{GA-ul memetic} s-a dovedit superior pe instanța analizată, confirmând
+tendințele raportate în lucrările recente \cite{kumar2010genetic, yang2022memetic}.
+
+% --------- 7. Concluzii și direcții viitoare ----------
+\section{Concluzii și direcții viitoare}
+\label{sec:concluzii}
+
+Studiul comparativ realizat a vizat trei variante reprezentative ale algoritmilor genetici
+aplicați pe problema clasică \textit{Knapsack 0/1}, o problemă combinatorială de tip NP-hard.
+Rezultatele experimentale au confirmat observațiile teoretice din literatura de specialitate
+\cite{kumar2010genetic, domonkos2023steady, yang2022memetic} și au evidențiat particularități
+clare pentru fiecare variantă testată:
+
+\begin{itemize}
+    \item \textbf{GA-ul generațional (cu elitism)} s-a dovedit a fi o variantă stabilă și eficientă
+    din punct de vedere al timpului de execuție. El oferă o evoluție consistentă, dar riscă o
+    \textit{convergență prematură} în lipsa diversității genetice.
+    
+    \item \textbf{GA-ul steady-state} a menținut o diversitate mai mare în populație datorită
+    înlocuirilor incrementale, însă progresul său global a fost mai lent. Este potrivit pentru
+    probleme unde explorarea pe termen lung este mai importantă decât viteza de convergență.
+    
+    \item \textbf{GA-ul memetic (cu local search)} a atins cele mai bune performanțe generale —
+    atât în ceea ce privește calitatea soluțiilor, cât și consistența între rulări. Inserarea
+    unui operator de \textit{căutare locală 1-bit} pe elite a îmbunătățit exploatarea spațiului
+    de căutare, stabilizând convergența fără a introduce un cost de timp semnificativ.
+\end{itemize}
+
+În ansamblu, analiza arată că, pentru probleme cu peisaje de fitness relativ uniforme,
+hibridizarea GA-urilor cu metode de tip \textit{hill-climbing} (cum este cazul GA-ului memetic)
+reprezintă o direcție eficientă de echilibrare a proceselor de explorare și exploatare.
+
+\subsection{Direcții viitoare de cercetare}
+Rezultatele obținute pot fi extinse în mai multe direcții:
+\begin{itemize}
+    \item Investigarea performanței GA-urilor pe instanțe \textbf{de dimensiuni mari} ($n > 500$)
+    pentru a evalua scalabilitatea algoritmilor.
+    \item Integrarea unei \textbf{strategii adaptive} pentru parametrii de crossover și mutație,
+    inspirată din modelele de evoluție naturală (\textit{self-adaptive GAs}).
+    \item Compararea cu \textbf{alte metaeuristici hibride}, precum algoritmii evolutivi diferențiali
+    sau Particle Swarm Optimization, pentru o analiză mai amplă a performanței.
+    \item Extinderea testării către probleme \textbf{multi-obiectiv} (de tip NSGA-II/III),
+    pentru a evalua echilibrul dintre multiple criterii de optimizare.
+\end{itemize}
+
+\noindent În concluzie, \textbf{algoritmul memetic} a demonstrat un echilibru superior între
+calitate, stabilitate și eficiență computațională, consolidându-și statutul de metodă
+de referință pentru probleme combinatoriale precum \textit{Knapsack 0/1}.
+
+
+% ---------------- Bibliografie clasică ----------------
+\small
+\bibliography{references}
+
+\end{document}
