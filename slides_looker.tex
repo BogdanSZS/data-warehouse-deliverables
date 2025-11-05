@@ -1,0 +1,418 @@
+\documentclass[aspectratio=169, 11pt]{beamer}
+
+% Pachete
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\DeclareUnicodeCharacter{2009}{\,}  % tratează U+2009 ca o virgulă fină \,
+\usepackage[romanian]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{color}
+\usepackage{ragged2e}
+\usepackage{etoolbox}
+\usepackage[numbers]{natbib}
+\usepackage{listings}
+\usepackage[absolute, overlay]{textpos}
+\usepackage{amssymb}
+
+% Definirea culorilor personalizate
+\definecolor{darktext}{HTML}{064273}
+\definecolor{lighttext}{HTML}{def3f6}
+\definecolor{redtext}{HTML}{da1a32}
+\definecolor{lightbackground}{HTML}{def3f6}
+\definecolor{darkbackground}{HTML}{064273}
+\definecolor{footerbackground}{HTML}{064273}
+\definecolor{titlebackground}{HTML}{064273}
+\definecolor{enumeratecolor}{HTML}{588b8b}
+
+% Tema personalizată
+\setbeamercolor{background canvas}{bg=lightbackground}
+\setbeamercolor{normal text}{fg=darktext, bg=lightbackground}
+\setbeamercolor{title}{fg=lighttext, bg=titlebackground}
+\setbeamercolor{frametitle}{fg=lighttext, bg=darkbackground}
+\setbeamercolor{footline}{bg=footerbackground, fg=lighttext}
+
+% Culori pentru liste (itemize / enumerate)
+\setbeamercolor{item}{fg=enumeratecolor}
+\setbeamercolor{subitem}{fg=enumeratecolor}
+\setbeamercolor{subsubitem}{fg=enumeratecolor}
+\setbeamercolor{enumerate item}{fg=enumeratecolor}
+\setbeamercolor{enumerate subitem}{fg=enumeratecolor}
+\setbeamercolor{enumerate subsubitem}{fg=enumeratecolor}
+
+% Customizare footer
+\setbeamertemplate{footline}{
+  \leavevmode%
+  \hbox{%
+  \begin{beamercolorbox}[wd=\paperwidth,ht=2.5ex,dp=1ex,leftskip=1em,rightskip=1em]{footline}%
+    \usebeamerfont{footline}\insertshorttitle\hfill \insertshortdate
+  \end{beamercolorbox}}%
+}
+
+% Eliminarea autorului și emailului din footer
+\setbeamertemplate{navigation symbols}{}
+
+% Customizare titlu
+\setbeamertemplate{title page}{
+  \vbox{}
+  \vfill
+  \begin{centering}
+    \begin{beamercolorbox}[sep=8pt,center,rounded=true,shadow=true]{title}
+      \usebeamerfont{title}\inserttitle\par
+    \end{beamercolorbox}
+    \vspace{0.5cm}
+    \begin{flushleft}
+      \usebeamerfont{author}\textbf{Autor:} Bogdan Szasz\\
+      \textbf{Email:} Szasz.Te.Bogdan@student.utcluj.ro\\
+      \textbf{Coordonator:} Șl. Dr. Ing. Călin Cenan\\
+      \vspace{0.8em} \insertdate
+    \end{flushleft}
+  \end{centering}
+  \vfill
+}
+
+% Tema prezentării
+\usecolortheme{default}
+
+% Setare globală pentru justificare
+\AtBeginDocument{\let\raggedright\justifying}
+% Also ensure lists & blocks are justified
+\BeforeBeginEnvironment{itemize}{\justifying}
+\BeforeBeginEnvironment{enumerate}{\justifying}
+\BeforeBeginEnvironment{description}{\justifying}
+\AtBeginEnvironment{frame}{\justifying}
+\addtobeamertemplate{block begin}{}{\justifying}
+\addtobeamertemplate{block alerted begin}{}{\justifying}
+\addtobeamertemplate{block example begin}{}{\justifying}
+
+% Titlu și autor
+\title{Analiză de date în Looker Studio, folosind Superstore data source}
+\date{\today}
+
+\begin{document}
+
+% Slide-ul de titlu
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% Introducere
+\begin{frame}{Introducere}
+  \textbf{Context:}  
+  Am realizat o analiză de date utilizând platforma \textbf{Google Looker Studio},
+  pe baza unui set de date de tip retail denumit \textit{Superstore Dataset},
+  conținând peste 10\,000 de înregistrări.  
+
+  \vspace{0.5em}
+  \textbf{Obiectiv:}  
+  Construirea unui dashboard interactiv pentru monitorizarea indicatorilor de
+  performanță (\textit{KPI}) — vânzări, profit, marjă și discount — împreună cu
+  vizualizări geografice, segmentări de clienți și analize de produse.
+
+  \vspace{0.5em}
+  \textbf{Mediul de lucru:}  
+  \begin{itemize}
+    \item Sursa de date: Google Sheets (dataset importat dintr-un fișier Excel original).
+    \item Platforma de raportare: Looker Studio.
+    \item Număr total de câmpuri: 30 (inclusiv câmpuri derivate precum
+    \textit{Margin \%}, \textit{Ship Delay}, \textit{Discount Tier}).
+  \end{itemize}
+
+  \vspace{0.5em}
+  \footnotesize Acest raport oferă o perspectivă vizuală asupra performanței comerciale,
+  permițând interpretarea rapidă a tendințelor și corelarea vânzărilor cu
+  profitabilitatea.
+\end{frame}
+
+% Structura datasetului
+\begin{frame}{Structura datasetului}
+  \begin{columns}[T,onlytextwidth]
+    % ---- Coloana din stânga ----
+    \begin{column}{0.7\textwidth}
+      \textbf{Descriere generală:}
+
+      Setul de date conține informații retail din SUA între \textbf{2014-2017}:
+      \begin{itemize}
+        \item (\texttt{Order Date}, \texttt{Ship Date});
+        \item (\texttt{Customer ID}, \texttt{Segment}, \texttt{Region});
+        \item (\texttt{Category}, \texttt{Sub-Category}, \texttt{Product Name});
+        \item (\texttt{Sales}, \texttt{Profit}, \texttt{Discount}, \texttt{Quantity});
+      \end{itemize}
+
+      \textbf{Câmpuri derivate adăugate:}
+      \begin{itemize}
+        \item \texttt{Margin \%} - raport între profit și vânzări;
+        \item \texttt{Discount Tier} - clasificare a reducerilor;
+        \item \texttt{Ship Delay (Days)} - diferența dintre livrare și comandă;
+        \item \texttt{AOV (Avg Order Value)} - media valorii per comandă.
+      \end{itemize}
+
+    \end{column}
+
+    % ---- Coloana din dreapta ----
+    \begin{column}{0.28\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{figs/looker_fields.png}
+      \vspace{0.3em}
+      \footnotesize \textit{Figura:} Lista completă de câmpuri definite
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Dashboard principal — KPI-uri şi tendinţe generale
+\begin{frame}{Dashboard principal — KPI-uri şi tendinţe generale}
+  \begin{columns}[T,onlytextwidth]
+    % ---- Stânga ----
+    \begin{column}{0.5\textwidth}
+      Panoul principal oferă o privire de ansamblu asupra performanţei generale:
+      \vspace{0.5em}
+      \begin{itemize}
+        \item KPI-uri cheie: \textbf{Sales}, \textbf{Profit}, \textbf{Orders}, \textbf{Margin \%};
+        \item Evoluţia lunară este afişată prin grafice de tip \textit{time series};
+        \item Creştere constantă a volumului vânzărilor între 2014-2017;
+        \item Uşoare variaţii sezoniere, mai ales în trimestrul 4.
+      \end{itemize}
+    \end{column}
+
+    % ---- Dreapta ----
+    \begin{column}{0.45\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{figs/looker_overview.png}
+      \vspace{0.3em}
+      \footnotesize \textit{Figura: Panou principal Looker Studio — evoluţia KPI-urilor în timp.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Analiza geografică a vânzărilor
+\begin{frame}{Analiza geografică a vânzărilor}
+  \begin{columns}[T,onlytextwidth]
+    % ---- Stânga ----
+    \begin{column}{0.5\textwidth}
+      Vizualizarea geografică evidențiază principalele zone comerciale din SUA, 
+      pe baza volumului total al vânzărilor.
+      \vspace{0.5em}
+
+      \begin{itemize}
+        \item Cele mai mari concentrări sunt în \textbf{California}, \textbf{New York} și \textbf{Texas}.
+        \item Punctele albastre mai intense indică valori de vânzări mai mari.
+        \item Se observă o corelație între densitatea urbană și volumul de comenzi.
+      \end{itemize}
+
+      \vspace{0.5em}
+      \small
+      Indicatorul utilizat: \textbf{SUM(Sales)} agregat per \textit{City}.
+    \end{column}
+
+    % ---- Dreapta ----
+    \begin{column}{0.45\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{figs/looker_geo.png}
+      \vspace{0.3em}
+      \footnotesize \textit{Figura: Distribuția geografică a vânzărilor în SUA.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Analiza pe segmente de clienţi şi profitabilitate
+\begin{frame}{Analiza pe segmente de clienţi şi profitabilitate}
+  \begin{columns}[T,onlytextwidth]
+    % ---- Stânga ----
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}
+        \item \textbf{Consumer} generează cele mai multe vânzări totale;
+        \item \textbf{Corporate} are o marjă mai ridicată şi profit stabil;
+        \item \textbf{Home Office} are volum mai mic, dar discounturi mai mari;
+        \item Profitul e corelat negativ cu nivelul mediu al discounturilor.
+      \end{itemize}
+      \vspace{0.5em}
+      \small
+      Câmpuri folosite: \texttt{Segment}, \texttt{SUM(Sales)}, \texttt{SUM(Profit)}, \texttt{AVG(Discount)}.
+    \end{column}
+
+    % ---- Dreapta ----
+    \begin{column}{0.45\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{figs/looker_segments.png}
+      \vspace{0.3em}
+      \footnotesize \textit{Figura: Vânzări şi profit per segment de clienţi.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Analiza pe categorii şi subcategorii de produse
+\begin{frame}{Analiza pe categorii şi subcategorii de produse}
+  \begin{columns}[T,onlytextwidth]
+    % ---- Stânga ----
+    \begin{column}{0.55\textwidth}
+      Această vizualizare compară performanţa principalelor categorii de produse
+      din portofoliu: \textbf{Technology}, \textbf{Office Supplies} şi \textbf{Furniture}.
+      \vspace{0.5em}
+
+      \begin{itemize}
+        \item \textbf{Technology} este categoria cu cea mai mare valoare totală a vânzărilor;
+        \item \textbf{Office Supplies} are marje de profit stabile şi volum mare;
+        \item \textbf{Furniture} prezintă variaţii mari între subcategorii (unele cu pierdere);
+        \item Subcategoriile \textit{Phones} şi \textit{Chairs} conduc la nivel de profit absolut.
+      \end{itemize}
+
+      \vspace{0.5em}
+      \small
+      Câmpuri utilizate: \texttt{Category}, \texttt{Sub-Category}, \texttt{SUM(Sales)}, \texttt{SUM(Profit)}.
+    \end{column}
+
+    % ---- Dreapta ----
+    \begin{column}{0.40\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{figs/looker_products.png}
+      \vspace{0.3em}
+      \footnotesize \textit{Figura: Vânzări şi profit per categorie şi subcategorie.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Produse cu cele mai mari profituri
+\begin{frame}{Produse cu cele mai mari profituri}
+  \begin{columns}[T,onlytextwidth]
+    % ---- Stânga ----
+    \begin{column}{0.5\textwidth}
+      Tabelul evidenţiază cele mai profitabile produse,
+      sortate descrescător după \textbf{Profit}, cu un \textit{heatmap} vizual.
+      \vspace{0.7em}
+
+      \textbf{Observaţii:}
+      \begin{itemize}
+        \item Categoria \textbf{Technology} domină topul (copiers, printers).
+        \item Unele produse din \textbf{Furniture} au marje negative.
+        \item \textbf{Office Supplies} are volum mare, dar profit variabil.
+      \end{itemize}
+
+      \vspace{0.5em}
+      \footnotesize
+      Câmpuri: \texttt{Category}, \texttt{Sub-Category}, \texttt{Product Name}, \texttt{Sales}, \texttt{Profit}, \texttt{Margin \%}.
+    \end{column}
+
+    % ---- Dreapta ----
+    \begin{column}{0.45\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{figs/looker_heatmap.png}
+      \vspace{0.3em}
+
+      \footnotesize \textit{Figura: Tabel cu heatmap pe profituri individuale.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Clienţi principali după profit
+\begin{frame}{Clienţi principali după profit}
+  \begin{columns}[T,onlytextwidth]
+    % ---- Stânga ----
+    \begin{column}{0.5\textwidth}
+      Graficul prezintă \textbf{top 10 clienţi} ordonaţi descrescător după profit total.
+      \vspace{0.7em}
+
+      \textbf{Observaţii:}
+      \begin{itemize}
+        \item Clienţii \textbf{Tamara Chand} şi \textbf{Raymond Buch} generează cele mai mari profituri.
+        \item Diferenţa dintre primii doi şi restul este semnificativă.
+        \item Profitul scade gradual, fără outlieri negativi.
+      \end{itemize}
+
+      \vspace{0.5em}
+      \footnotesize
+      Câmpuri utilizate: \texttt{Customer Name}, \texttt{Profit}.
+    \end{column}
+
+    % ---- Dreapta ----
+    \begin{column}{0.45\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{figs/looker_customers.png}
+      \vspace{0.3em}
+      \footnotesize \textit{Figura: Top 10 clienţi ordonaţi descrescător după profit.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Discounturi şi marje
+\begin{frame}{Discounturi şi marje}
+  \begin{columns}[T,onlytextwidth]
+    % ---- Stânga ----
+    \begin{column}{0.53\textwidth}
+      Graficele arată impactul nivelului de discount asupra
+      \textbf{vânzărilor} şi \textbf{marjei de profit}.
+      \vspace{0.7em}
+
+      \textbf{Observaţii:}
+      \begin{itemize}
+        \item Cele mai mari vânzări provin din categoria \textbf{No Discount}.
+        \item Discounturile foarte mari (\textbf{40\%+}) duc la marje negative.
+        \item Există o corelaţie inversă între volum şi profitabilitate.
+      \end{itemize}
+
+      \vspace{0.5em}
+      \footnotesize
+      Câmpuri utilizate: \texttt{Discount Tier}, \texttt{Sales}, \texttt{Margin \%}.
+    \end{column}
+
+    % ---- Dreapta ----
+    \begin{column}{0.45\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{figs/looker_discounts.png}
+      \vspace{0.3em}
+      \footnotesize \textit{Figura: Vânzări şi marje medii pe intervale de discount.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Relaţia vânzări-profit pe categorii
+\begin{frame}{Relaţia vânzări-profit pe categorii}
+  \begin{columns}[T,onlytextwidth]
+    % ---- Stânga ----
+    \begin{column}{0.5\textwidth}
+      Diagrama de tip \textbf{bubble chart} arată relaţia dintre
+      \textbf{vânzări} şi \textbf{profit} pentru fiecare categorie principală.
+      \vspace{0.7em}
+
+      \textbf{Observaţii:}
+      \begin{itemize}
+        \item \textbf{Technology} are cele mai mari vânzări şi profit.
+        \item \textbf{Office Supplies} are volum mare, dar marjă mai modestă.
+        \item \textbf{Furniture} are profit semnificativ mai mic, indicând costuri ridicate.
+      \end{itemize}
+
+      \vspace{0.5em}
+      \footnotesize
+      Câmpuri utilizate: \texttt{Category}, \texttt{Sales}, \texttt{Profit}.
+    \end{column}
+
+    % ---- Dreapta ----
+    \begin{column}{0.45\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{figs/looker_scatter.png}
+      \vspace{0.3em}
+      \footnotesize \textit{Figura: Raport vânzări-profit la nivel de categorie.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+% Concluzii
+\begin{frame}{Concluzii}
+  \begin{itemize}
+    \item Google Looker Studio permite crearea rapidă de rapoarte interactive, bazate pe date brute din Google Sheets.
+    \item Analiza a evidențiat corelații clare între discounturi, vânzări și profit.
+    \item Vizualizările oferă o perspectivă intuitivă asupra performanței categoriilor și clienților.
+    \item Instrumentul este potrivit pentru raportări descriptive și monitorizarea indicatorilor de business.
+  \end{itemize}
+\end{frame}
+
+% Slide: Mulțumiri
+\begin{frame}
+    \centering
+    \vfill
+    {\LARGE \textbf{Vă mulțumesc pentru atenție!}}
+    \vfill
+\end{frame}
+
+\end{document}
